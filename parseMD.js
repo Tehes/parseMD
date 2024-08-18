@@ -8,36 +8,6 @@ function escapeHtml(text) {
 }
 
 export function parseMd(md) {
-    // Escape HTML entities to prevent injection attacks
-    // Example:
-    // Input: "<script>alert('Hello!')</script>"
-    // Output: "&lt;script&gt;alert(&#039;Hello!&#039;)&lt;/script&gt;"
-    md = escapeHtml(md);
-
-    // Unordered List (ul)
-    // Example:
-    // Input: "* Item 1\n* Item 2"
-    // Output: "<ul>\n<li>Item 1</li><li>Item 2</li></ul>"
-    md = md.replace(/^\s*\n\*/gm, '<ul>\n*');
-    md = md.replace(/^(\*.+)\s*\n([^\*])/gm, '$1\n</ul>\n\n$2');
-    md = md.replace(/^\*(.+)/gm, '<li>$1</li>');
-    md = md.replace(/<\/ul>\s*$/, '</ul>\n');
-
-    // Ordered List (ol)
-    // Example:
-    // Input: "1. First item\n2. Second item"
-    // Output: "<ol>\n<li>First item</li><li>Second item</li></ol>"
-    md = md.replace(/^\s*\n\d\./gm, '<ol>\n1.');
-    md = md.replace(/^(\d\..+)\s*\n([^\d\.])/gm, '$1\n</ol>\n\n$2');
-    md = md.replace(/^\d\.(.+)/gm, '<li>$1</li>');
-    md = md.replace(/<\/ol>\s*$/, '</ol>\n');
-
-    // Blockquote
-    // Example:
-    // Input: "> This is a quote"
-    // Output: "<blockquote>This is a quote</blockquote>"
-    md = md.replace(/^\s*\>(.+)/gm, '<blockquote>$1</blockquote>');
-
     // Headings (h1 to h6) with #
     // Example:
     // Input: "### This is a heading"
@@ -56,6 +26,41 @@ export function parseMd(md) {
     md = md.replace(/^(.+)\n\*{2,}/gm, '<h4>$1</h4>'); // H4 with ***
     md = md.replace(/^(.+)\n_{2,}/gm, '<h5>$1</h5>'); // H5 with ___
     md = md.replace(/^(.+)\n\~{2,}/gm, '<h6>$1</h6>'); // H6 with ~~~
+
+    // Blockquote
+    // Example:
+    // Input: "> This is a quote\n> with multiple lines"
+    // Output: "<blockquote><p>This is a quote</p><p>with multiple lines</p></blockquote>"
+    md = md.replace(/^\s*>\s*([^]*?)(\n\n|\n$|$)/gm, function (match, p1) {
+        const content = p1.trim().replace(/\n/g, '<br>');
+        return `<blockquote><p>${content}</p></blockquote>`;
+    });
+
+    // Escape HTML entities to prevent injection attacks
+    // Example:
+    // Input: "<script>alert('Hello!')</script>"
+    // Output: "&lt;script&gt;alert(&#039;Hello!&#039;)&lt;/script&gt;"
+    md = md.replace(/>([^<]+)</g, function (match, p1) {
+        return '>' + escapeHtml(p1) + '<';
+    });
+
+    // Unordered List (ul)
+    // Example:
+    // Input: "* Item 1\n* Item 2"
+    // Output: "<ul>\n<li>Item 1</li><li>Item 2</li></ul>"
+    md = md.replace(/^\s*\n\*/gm, '<ul>\n*');
+    md = md.replace(/^(\*.+)\s*\n([^\*])/gm, '$1\n</ul>\n\n$2');
+    md = md.replace(/^\*(.+)/gm, '<li>$1</li>');
+    md = md.replace(/<\/ul>\s*$/, '</ul>\n');
+
+    // Ordered List (ol)
+    // Example:
+    // Input: "1. First item\n2. Second item"
+    // Output: "<ol>\n<li>First item</li><li>Second item</li></ol>"
+    md = md.replace(/^\s*\n\d\./gm, '<ol>\n1.');
+    md = md.replace(/^(\d\..+)\s*\n([^\d\.])/gm, '$1\n</ol>\n\n$2');
+    md = md.replace(/^\d\.(.+)/gm, '<li>$1</li>');
+    md = md.replace(/<\/ol>\s*$/, '</ol>\n');
 
     // Images
     // Example:
