@@ -24,7 +24,7 @@ import { parseMd } from './path-to-your-file/parseMd';
 ```
 ## Usage
 
-###Example
+### Example
 ```javascript
 import { parseMd } from './parseMd';
 
