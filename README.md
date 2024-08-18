@@ -22,6 +22,13 @@ You can include the `parseMd` function in your project by importing it directly 
 ```javascript
 import { parseMd } from './path-to-your-file/parseMd';
 ```
+
+or use a cdn
+
+```javascript
+import { parseMd } from 'https://cdn.jsdelivr.net/gh/Tehes/parseMD@main/parseMD.js';
+```
+
 ## Usage
 
 ### Example
