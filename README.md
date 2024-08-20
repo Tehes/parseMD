@@ -1,11 +1,9 @@
 # Markdown Parser
 
 ## Overview
-
 The `parseMd` function is a lightweight JavaScript utility for converting Markdown syntax into HTML. It supports a wide range of Markdown features including headers, lists, blockquotes, images, links, and text formatting, making it a simple yet effective tool for parsing Markdown content in web applications.
 
 ## Features
-
 - **Headers**: Converts Markdown headers (`#`, `##`, ..., `######`) into corresponding HTML header tags (`<h1>`, `<h2>`, ..., `<h6>`). Also supports alternative header syntax.
 - **Lists**: Transforms unordered (`*`) and ordered lists (`1.`, `2.`, etc.) into HTML list elements (`<ul>`, `<ol>`, `<li>`).
 - **Blockquotes**: Converts Markdown blockquotes (`>`) into HTML blockquote tags (`<blockquote>`).
@@ -16,15 +14,12 @@ The `parseMd` function is a lightweight JavaScript utility for converting Markdo
 - **Paragraphs**: Automatically wraps standalone lines of text in paragraph tags (`<p>`).
 
 ## Installation
-
 You can include the `parseMd` function in your project by importing it directly from your JavaScript module:
-
 ```javascript
 import { parseMd } from './path-to-your-file/parseMd';
 ```
 
 or use a cdn
-
 ```javascript
 import { parseMd } from 'https://cdn.jsdelivr.net/gh/Tehes/parseMD@main/parseMD.js';
 ```
@@ -41,7 +36,6 @@ const markdown = `
 This is an **example** of a Markdown document.
 
 ## Features
-
 - Easy to use
 - Lightweight
 - Supports multiple Markdown features
@@ -61,7 +55,6 @@ const html = parseMd(markdown);
 console.log(html);
 ```
 ### Output
-
 ```html
 <h1>My Project</h1>
 <p>This is an <b>example</b> of a Markdown document.</p>
@@ -78,7 +71,6 @@ console.log(html);
 ```
 
 ## How It Works
-
 The parseMd function works by replacing Markdown syntax in a string with corresponding HTML tags. It processes the input string through a series of regular expression replacements, each handling a specific aspect of the Markdown syntax.
 
 ### Steps:
