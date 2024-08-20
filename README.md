@@ -82,7 +82,7 @@ console.log(html);
 The parseMd function works by replacing Markdown syntax in a string with corresponding HTML tags. It processes the input string through a series of regular expression replacements, each handling a specific aspect of the Markdown syntax.
 
 ### Steps:
-
+```
 1. Escape HTML: Before processing the Markdown, the function escapes any existing HTML tags in the input to prevent XSS attacks.
 2. Transform Headers: Converts lines starting with #, ##, etc., into header tags (<h1>, <h2>, etc.).
 3. Convert Lists: Recognizes and processes both unordered (*) and ordered lists (1.) into appropriate HTML list structures.
@@ -91,3 +91,4 @@ The parseMd function works by replacing Markdown syntax in a string with corresp
 6. Apply Text Formatting: Converts bold, italic, and strikethrough syntax into corresponding HTML tags.
 7. Format Code Blocks: Handles both inline and block-level code, wrapping them in <code> and <pre> tags.
 8. Wrap Paragraphs: Ensures any remaining standalone text is wrapped in paragraph tags (<p>).
+```
