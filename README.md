@@ -83,11 +83,11 @@ The parseMd function works by replacing Markdown syntax in a string with corresp
 
 ### Steps:
 
-	1.	Escape HTML: Before processing the Markdown, the function escapes any existing HTML tags in the input to prevent XSS attacks.
-	2.	Transform Headers: Converts lines starting with #, ##, etc., into header tags (<h1>, <h2>, etc.).
-	3.	Convert Lists: Recognizes and processes both unordered (*) and ordered lists (1.) into appropriate HTML list structures.
-	4.	Handle Blockquotes: Converts lines starting with > into HTML blockquotes.
-	5.	Parse Images and Links: Identifies and transforms Markdown image and link syntax into HTML <img> and <a> tags.
-	6.	Apply Text Formatting: Converts bold, italic, and strikethrough syntax into corresponding HTML tags.
-	7.	Format Code Blocks: Handles both inline and block-level code, wrapping them in <code> and <pre> tags.
-	8.	Wrap Paragraphs: Ensures any remaining standalone text is wrapped in paragraph tags (<p>).
+1. Escape HTML: Before processing the Markdown, the function escapes any existing HTML tags in the input to prevent XSS attacks.
+2. Transform Headers: Converts lines starting with #, ##, etc., into header tags (<h1>, <h2>, etc.).
+3. Convert Lists: Recognizes and processes both unordered (*) and ordered lists (1.) into appropriate HTML list structures.
+4. Handle Blockquotes: Converts lines starting with > into HTML blockquotes.
+5. Parse Images and Links: Identifies and transforms Markdown image and link syntax into HTML <img> and <a> tags.
+6. Apply Text Formatting: Converts bold, italic, and strikethrough syntax into corresponding HTML tags.
+7. Format Code Blocks: Handles both inline and block-level code, wrapping them in <code> and <pre> tags.
+8. Wrap Paragraphs: Ensures any remaining standalone text is wrapped in paragraph tags (<p>).
