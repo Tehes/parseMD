@@ -91,12 +91,10 @@ console.log(content); // Logs the converted HTML
 The parseMd function works by replacing Markdown syntax in a string with corresponding HTML tags. It processes the input string through a series of regular expression replacements, each handling a specific aspect of the Markdown syntax.
 
 ### Steps:
-```
-	1.	Extract Frontmatter: Separates YAML Frontmatter at the beginning of the document and converts it into an object.
-	2.	Escape HTML: Safeguards against XSS attacks by escaping any HTML tags in the input.
-	3.	Transform Headers, Lists, Blockquotes, etc.: Identifies and converts headers, lists, and other Markdown syntax into their HTML equivalents.
-	4.	Parse Images and Links: Detects and transforms image and link notations into HTML tags.
-	5.	Apply Text Formatting: Processes bold, italic, and strikethrough text into HTML tags.
-	6.	Format Code Blocks: Handles both inline and block code formats.
-	7.	Wrap Paragraphs: Ensures any remaining text is neatly wrapped in paragraph tags.
-```
+1.	Extract Frontmatter: Separates YAML Frontmatter at the beginning of the document and converts it into an object.
+2.	Escape HTML: Safeguards against XSS attacks by escaping any HTML tags in the input.
+3.	Transform Headers, Lists, Blockquotes, etc.: Identifies and converts headers, lists, and other Markdown syntax into their HTML equivalents.
+4.	Parse Images and Links: Detects and transforms image and link notations into HTML tags.
+5.	Apply Text Formatting: Processes bold, italic, and strikethrough text into HTML tags.
+6.	Format Code Blocks: Handles both inline and block code formats.
+7.	Wrap Paragraphs: Ensures any remaining text is neatly wrapped in paragraph tags.
