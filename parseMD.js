@@ -1,4 +1,28 @@
-// This function replaces dangerous HTML characters with their safe equivalents.
+// extract and process frontmatter
+function parseFrontmatter(data) {
+    const frontmatterPattern = /^---\n([\s\S]+?)\n---\n/;
+    const match = frontmatterPattern.exec(data);
+
+    let frontmatterObj = {};
+    if (match) {
+        const frontmatter = match[1];
+        frontmatterObj = {};
+
+        frontmatter.split('\n').forEach(line => {
+            const [key, value] = line.split(/:\s(.+)/);
+            if (key && value) {
+                frontmatterObj[key.trim()] = value.trim();
+            }
+        });
+
+        // Remove frontmatter block from Markdown
+        data = data.slice(match[0].length);
+    }
+
+    return { frontmatterObj, data };
+}
+
+// replace dangerous HTML characters with their safe equivalents.
 function escapeHtml(text) {
     return text.replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
@@ -7,7 +31,11 @@ function escapeHtml(text) {
         .replace(/'/g, "&#039;");
 }
 
-export function parseMd(md) {
+export function parseMd(data) {
+    // parse and extract frontmatter
+    const { frontmatterObj, data: content } = parseFrontmatter(data);
+    let md = content;
+
     // Headings (h1 to h6) with #
     // Example:
     // Input: "### This is a heading"
@@ -102,5 +130,8 @@ export function parseMd(md) {
     // Remove <p> tags from <pre>
     md = md.replace(/(<pre[^>]*>)(\s*\n<p>([^<]+)<\/p>)<\/pre>/g, '$1$3</pre>');
 
-    return md;
+    return {
+        metadata: frontmatterObj,
+        content: md
+    };
 }
