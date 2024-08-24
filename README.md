@@ -99,7 +99,7 @@ console.log(content); // Logs the converted HTML
 
 The parseMd function works by replacing Markdown syntax in a string with corresponding HTML tags. It processes the input string through a series of regular expression replacements, each handling a specific aspect of the Markdown syntax.
 
-### Steps:
+### Steps
 
 1. Extract Frontmatter: Separates YAML Frontmatter at the beginning of the document and converts it into an object.
 2. Escape HTML: Safeguards against XSS attacks by escaping any HTML tags in the input.
