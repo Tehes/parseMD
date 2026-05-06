@@ -1,137 +1,348 @@
-// extract and process frontmatter
 function parseFrontmatter(data) {
-    const frontmatterPattern = /^---\n([\s\S]+?)\n---\n/;
-    const match = frontmatterPattern.exec(data);
+	const normalizedData = String(data ?? "").replace(/\r\n?/g, "\n");
+	const frontmatterPattern = /^---[ \t]*\n([\s\S]*?)\n---[ \t]*(?:\n|$)/;
+	const match = frontmatterPattern.exec(normalizedData);
 
-    let frontmatterObj = {};
-    if (match) {
-        const frontmatter = match[1];
-        frontmatterObj = {};
+	if (!match) {
+		return {
+			frontmatterObj: {},
+			data: normalizedData,
+		};
+	}
 
-        frontmatter.split('\n').forEach(line => {
-            const [key, value] = line.split(/:\s(.+)/);
-            if (key && value) {
-                frontmatterObj[key.trim()] = value.trim();
-            }
-        });
-
-        // Remove frontmatter block from Markdown
-        data = data.slice(match[0].length);
-    }
-
-    return { frontmatterObj, data };
+	return {
+		frontmatterObj: parseSimpleFrontmatter(match[1]),
+		data: normalizedData.slice(match[0].length),
+	};
 }
 
-// replace dangerous HTML characters with their safe equivalents.
+function parseSimpleFrontmatter(frontmatter) {
+	const frontmatterObj = {};
+
+	frontmatter.split("\n").forEach((rawLine) => {
+		const line = rawLine.trim();
+
+		if (!line || line.startsWith("#")) {
+			return;
+		}
+
+		const separatorIndex = line.indexOf(":");
+
+		if (separatorIndex === -1) {
+			return;
+		}
+
+		const key = line.slice(0, separatorIndex).trim();
+		const value = line.slice(separatorIndex + 1).trim();
+
+		if (!key) {
+			return;
+		}
+
+		frontmatterObj[key] = stripWrappingQuotes(value);
+	});
+
+	return frontmatterObj;
+}
+
+function stripWrappingQuotes(value) {
+	if (value.length < 2) {
+		return value;
+	}
+
+	const firstChar = value.at(0);
+	const lastChar = value.at(-1);
+
+	if (firstChar === '"' && lastChar === '"') {
+		return value.slice(1, -1).replace(/\\"/g, '"');
+	}
+
+	if (firstChar === "'" && lastChar === "'") {
+		return value.slice(1, -1).replace(/\\'/g, "'");
+	}
+
+	return value;
+}
+
 function escapeHtml(text) {
-    return text.replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+	return String(text).replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&#039;");
+}
+
+function escapeAttribute(text) {
+	return escapeHtml(text);
+}
+
+function isSafeUrl(url) {
+	const trimmedUrl = url.trim();
+
+	if (!trimmedUrl || trimmedUrl.startsWith("//")) {
+		return false;
+	}
+
+	const compactUrl = Array.from(trimmedUrl).filter((char) => {
+		const charCode = char.charCodeAt(0);
+
+		return charCode > 0x1f && charCode !== 0x7f && !/\s/.test(char);
+	}).join("");
+	const protocolMatch = /^([a-z][a-z0-9+.-]*):/i.exec(compactUrl);
+
+	if (!protocolMatch) {
+		return true;
+	}
+
+	return ["http", "https", "mailto", "tel"].includes(protocolMatch[1].toLowerCase());
+}
+
+function renderImage(altText, url) {
+	const trimmedUrl = url.trim();
+
+	if (!isSafeUrl(trimmedUrl)) {
+		return escapeHtml(altText);
+	}
+
+	return `<img src="${escapeAttribute(trimmedUrl)}" alt="${escapeAttribute(altText)}" />`;
+}
+
+function renderLink(text, url, title) {
+	const trimmedUrl = url.trim();
+
+	if (!isSafeUrl(trimmedUrl)) {
+		return escapeHtml(text);
+	}
+
+	const titleAttribute = title === undefined ? "" : ` title="${escapeAttribute(title)}"`;
+
+	return `<a href="${escapeAttribute(trimmedUrl)}"${titleAttribute}>${escapeHtml(text)}</a>`;
+}
+
+function stashToken(tokens, value) {
+	const token = `\u0000MDTOKEN${tokens.length}\u0000`;
+	tokens.push({ token, value });
+
+	return token;
+}
+
+function restoreTokens(text, tokens) {
+	return tokens.reduce((html, item) => html.split(item.token).join(item.value), text);
+}
+
+function renderInline(text) {
+	const tokens = [];
+	let inline = text.replace(/`([^`\n]+)`/g, (_match, code) => {
+		return stashToken(tokens, `<code>${escapeHtml(code)}</code>`);
+	});
+
+	inline = inline.replace(/!\[([^\]\n]*)\]\(([^)\s"]+)(?:\s+"([^"]*)")?\)/g, (_match, altText, url) => {
+		return stashToken(tokens, renderImage(altText, url));
+	});
+
+	inline = inline.replace(/\[([^\]\n]+)\]\(([^)\s"]+)(?:\s+"([^"]*)")?\)/g, (_match, textContent, url, title) => {
+		return stashToken(tokens, renderLink(textContent, url, title));
+	});
+
+	inline = escapeHtml(inline);
+	inline = inline.replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>");
+	inline = inline.replace(/__([^_\n]+)__/g, "<b>$1</b>");
+	inline = inline.replace(/~~([^~\n]+)~~/g, "<del>$1</del>");
+	inline = inline.replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<i>$2</i>");
+	inline = inline.replace(/(^|[^_])_([^_\n]+)_/g, "$1<i>$2</i>");
+
+	return restoreTokens(inline, tokens);
+}
+
+function isFenceStart(line) {
+	return /^\s*```[A-Za-z0-9_-]*[ \t]*$/.test(line);
+}
+
+function isFenceEnd(line) {
+	return /^\s*```[ \t]*$/.test(line);
+}
+
+function getFenceLanguage(line) {
+	const match = /^\s*```([A-Za-z0-9_-]*)[ \t]*$/.exec(line);
+
+	return match ? match[1] : "";
+}
+
+function isAtxHeading(line) {
+	return /^#{1,6}(?:\s+|$)/.test(line);
+}
+
+function renderAtxHeading(line) {
+	const match = /^(#{1,6})\s*(.*?)\s*#*\s*$/.exec(line);
+
+	if (!match || !match[2]) {
+		return `<p>${renderInline(line)}</p>`;
+	}
+
+	return `<h${match[1].length}>${renderInline(match[2])}</h${match[1].length}>`;
+}
+
+function getSetextHeadingLevel(line) {
+	if (/^={2,}\s*$/.test(line)) {
+		return 1;
+	}
+
+	if (/^-{2,}\s*$/.test(line)) {
+		return 2;
+	}
+
+	return 0;
+}
+
+function isBlockquote(line) {
+	return /^\s*>\s?/.test(line);
+}
+
+function renderBlockquote(lines) {
+	const content = lines.map((line) => renderInline(line.replace(/^\s*>\s?/, "").trim())).join("<br>");
+
+	return `<blockquote><p>${content}</p></blockquote>`;
+}
+
+function isUnorderedListItem(line) {
+	return /^\s*[*+-]\s+/.test(line);
+}
+
+function isOrderedListItem(line) {
+	return /^\s*\d+\.\s+/.test(line);
+}
+
+function renderList(lines, tagName, itemPattern) {
+	const items = lines.map((line) => {
+		return `<li>${renderInline(line.replace(itemPattern, "").trim())}</li>`;
+	});
+
+	return `<${tagName}>\n${items.join("\n")}\n</${tagName}>`;
+}
+
+function isBlockStart(line) {
+	return isFenceStart(line) ||
+		isAtxHeading(line) ||
+		isBlockquote(line) ||
+		isUnorderedListItem(line) ||
+		isOrderedListItem(line);
+}
+
+function renderCodeBlock(lines, startIndex) {
+	const language = getFenceLanguage(lines[startIndex]);
+	const codeLines = [];
+	let index = startIndex + 1;
+
+	while (index < lines.length && !isFenceEnd(lines[index])) {
+		codeLines.push(lines[index]);
+		index += 1;
+	}
+
+	if (index < lines.length) {
+		index += 1;
+	}
+
+	const classAttribute = language ? ` class="${escapeAttribute(language)}"` : "";
+
+	return {
+		html: `<pre${classAttribute}><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`,
+		nextIndex: index,
+	};
+}
+
+function renderMarkdownBlocks(markdown) {
+	const lines = markdown.split("\n");
+	const blocks = [];
+	let index = 0;
+
+	while (index < lines.length) {
+		const line = lines[index];
+
+		if (!line.trim()) {
+			index += 1;
+			continue;
+		}
+
+		if (isFenceStart(line)) {
+			const codeBlock = renderCodeBlock(lines, index);
+			blocks.push(codeBlock.html);
+			index = codeBlock.nextIndex;
+			continue;
+		}
+
+		if (isAtxHeading(line)) {
+			blocks.push(renderAtxHeading(line));
+			index += 1;
+			continue;
+		}
+
+		const setextHeadingLevel = index + 1 < lines.length ? getSetextHeadingLevel(lines[index + 1]) : 0;
+
+		if (setextHeadingLevel) {
+			blocks.push(`<h${setextHeadingLevel}>${renderInline(line.trim())}</h${setextHeadingLevel}>`);
+			index += 2;
+			continue;
+		}
+
+		if (isBlockquote(line)) {
+			const quoteLines = [];
+
+			while (index < lines.length && isBlockquote(lines[index])) {
+				quoteLines.push(lines[index]);
+				index += 1;
+			}
+
+			blocks.push(renderBlockquote(quoteLines));
+			continue;
+		}
+
+		if (isUnorderedListItem(line)) {
+			const listLines = [];
+
+			while (index < lines.length && isUnorderedListItem(lines[index])) {
+				listLines.push(lines[index]);
+				index += 1;
+			}
+
+			blocks.push(renderList(listLines, "ul", /^\s*[*+-]\s+/));
+			continue;
+		}
+
+		if (isOrderedListItem(line)) {
+			const listLines = [];
+
+			while (index < lines.length && isOrderedListItem(lines[index])) {
+				listLines.push(lines[index]);
+				index += 1;
+			}
+
+			blocks.push(renderList(listLines, "ol", /^\s*\d+\.\s+/));
+			continue;
+		}
+
+		const paragraphLines = [];
+
+		while (
+			index < lines.length &&
+			lines[index].trim() &&
+			!isBlockStart(lines[index]) &&
+			!(index + 1 < lines.length && getSetextHeadingLevel(lines[index + 1]))
+		) {
+			paragraphLines.push(lines[index].trim());
+			index += 1;
+		}
+
+		blocks.push(`<p>${renderInline(paragraphLines.join(" "))}</p>`);
+	}
+
+	return blocks.join("\n");
 }
 
 export function parseMd(data) {
-    // parse and extract frontmatter
-    const { frontmatterObj, data: content } = parseFrontmatter(data);
-    let md = content;
+	const { frontmatterObj, data: content } = parseFrontmatter(data);
 
-    // Headings (h1 to h6) with #
-    // Example:
-    // Input: "### This is a heading"
-    // Output: "<h3>This is a heading</h3>"
-    md = md.replace(/^[#]{6}(.+)/gm, '<h6>$1</h6>');
-    md = md.replace(/^[#]{5}(.+)/gm, '<h5>$1</h5>');
-    md = md.replace(/^[#]{4}(.+)/gm, '<h4>$1</h4>');
-    md = md.replace(/^[#]{3}(.+)/gm, '<h3>$1</h3>');
-    md = md.replace(/^[#]{2}(.+)/gm, '<h2>$1</h2>');
-    md = md.replace(/^[#]{1}(.+)/gm, '<h1>$1</h1>');
-
-    // Alternative Headings (h1 to h6)
-    md = md.replace(/^(.+)\n={2,}/gm, '<h1>$1</h1>'); // H1 with ===
-    md = md.replace(/^(.+)\n-{2,}/gm, '<h2>$1</h2>'); // H2 with ---
-    md = md.replace(/^(.+)\n\+{2,}/gm, '<h3>$1</h3>'); // H3 with +++
-    md = md.replace(/^(.+)\n\*{2,}/gm, '<h4>$1</h4>'); // H4 with ***
-    md = md.replace(/^(.+)\n_{2,}/gm, '<h5>$1</h5>'); // H5 with ___
-    md = md.replace(/^(.+)\n\~{2,}/gm, '<h6>$1</h6>'); // H6 with ~~~
-
-    // Blockquote
-    // Example:
-    // Input: "> This is a quote\n> with multiple lines"
-    // Output: "<blockquote><p>This is a quote</p><p>with multiple lines</p></blockquote>"
-    md = md.replace(/^\s*>\s*([^]*?)(\n\n|\n$|$)/gm, function (match, p1) {
-        const content = p1.trim().replace(/\n/g, '<br>');
-        return `<blockquote><p>${content}</p></blockquote>`;
-    });
-
-    // Escape HTML entities to prevent injection attacks
-    // Example:
-    // Input: "<script>alert('Hello!')</script>"
-    // Output: "&lt;script&gt;alert(&#039;Hello!&#039;)&lt;/script&gt;"
-    md = md.replace(/>([^<]+)</g, function (match, p1) {
-        return '>' + escapeHtml(p1) + '<';
-    });
-
-    // Unordered List (ul)
-    // Example:
-    // Input: "* Item 1\n* Item 2"
-    // Output: "<ul>\n<li>Item 1</li><li>Item 2</li></ul>"
-    md = md.replace(/^\s*\n\*/gm, '<ul>\n*');
-    md = md.replace(/^(\*.+)\s*\n([^\*])/gm, '$1\n</ul>\n\n$2');
-    md = md.replace(/^\*(.+)/gm, '<li>$1</li>');
-    md = md.replace(/<\/ul>\s*$/, '</ul>\n');
-
-    // Ordered List (ol)
-    // Example:
-    // Input: "1. First item\n2. Second item"
-    // Output: "<ol>\n<li>First item</li><li>Second item</li></ol>"
-    md = md.replace(/^\s*\n\d\./gm, '<ol>\n1.');
-    md = md.replace(/^(\d\..+)\s*\n([^\d\.])/gm, '$1\n</ol>\n\n$2');
-    md = md.replace(/^\d\.(.+)/gm, '<li>$1</li>');
-    md = md.replace(/<\/ol>\s*$/, '</ol>\n');
-
-    // Images
-    // Example:
-    // Input: "![alt text](image.jpg)"
-    // Output: "<img src="image.jpg" alt="alt text" />"
-    md = md.replace(/\!\[([^\]]+)\]\(([^\)]+)\)/g, '<img src="$2" alt="$1" />');
-
-    // Links
-    // Example:
-    // Input: "[link text](https://example.com)"
-    // Output: "<a href="https://example.com">link text</a>"
-    md = md.replace(/\[([^\]]+)\]\(([^\)\"]+)(\"(.+)\")?\)/g, '<a href="$2" title="$4">$1</a>');
-
-    // Font Styles: bold, italic, strikethrough
-    md = md.replace(/\*\*([^\*]+)\*\*/g, '<b>$1</b>'); // **bold text**
-    md = md.replace(/\*([^\*]+)\*/g, '<i>$1</i>'); // *italic text*
-    md = md.replace(/~~([^\~]+)~~/g, '<del>$1</del>'); // ~~strikethrough~~
-
-    // Preformatted text (pre)
-    // Example:
-    // Input: "```\ncode block\n```"
-    // Output: "<pre class="language">code block</pre>"
-    md = md.replace(/^\s*\n\`\`\`(([^\s]+))?/gm, '<pre class="$2">');
-    md = md.replace(/^\`\`\`\s*\n/gm, '</pre>\n\n');
-    md = md.replace(/```([^\s]*)\n([\s\S]*?)\n```/g, '<pre class="$1">$2</pre>');
-
-    // Inline Code (code)
-    // Example:
-    // Input: "`inline code`"
-    // Output: "<code>inline code</code>"
-    md = md.replace(/`([^`]+)`/g, '<code>$1</code>');
-
-    // Paragraphs (p)
-    md = md.replace(/^\s*(\n){2,}/gm, '\n');
-    md = md.replace(/^\s*(\n)?(.+)/gm, function (m) {
-        return /<(\/)?(h\d|ul|ol|li|blockquote|pre|img)/.test(m) ? m : '<p>' + m + '</p>';
-    });
-
-    // Remove <p> tags from <pre>
-    md = md.replace(/(<pre[^>]*>)(\s*\n<p>([^<]+)<\/p>)<\/pre>/g, '$1$3</pre>');
-
-    return {
-        metadata: frontmatterObj,
-        content: md
-    };
+	return {
+		metadata: frontmatterObj,
+		content: renderMarkdownBlocks(content),
+	};
 }

@@ -1,47 +1,43 @@
-# Markdown Parser
+# parseMD
 
-## Overview
+`parseMD` is a small, dependency-free Markdown utility for browser and CDN usage. It converts a limited Markdown subset
+to HTML and extracts simple frontmatter from the beginning of a document.
 
-The `parseMd` function is a lightweight JavaScript utility for converting Markdown syntax into HTML, including the extraction and processing of YAML Frontmatter. It supports a wide range of Markdown features including headers, lists, blockquotes, images, links, and text formatting, making it a simple yet effective tool for parsing Markdown content in web applications.
+It is intentionally not a complete CommonMark parser and it does not parse full YAML.
 
 ## Features
 
-- **Frontmatter**: Extracts YAML Frontmatter from the Markdown data and returns it as a JavaScript object.
-- **Headers**: Converts Markdown headers (`#`, `##`, ..., `######`) into corresponding HTML header tags (`<h1>`, `<h2>`, ..., `<h6>`). Also supports alternative header syntax.
-- **Lists**: Transforms unordered (`*`) and ordered lists (`1.`, `2.`, etc.) into HTML list elements (`<ul>`, `<ol>`, `<li>`).
-- **Blockquotes**: Converts Markdown blockquotes (`>`) into HTML blockquote tags (`<blockquote>`).
-- **Images**: Parses Markdown image syntax (`![alt text](url)`) into HTML image tags (`<img src="url" alt="alt text" />`).
-- **Links**: Converts Markdown links (`[text](url "title")`) into HTML anchor tags (`<a href="url" title="title">text</a>`).
-- **Text Formatting**: Supports bold (`**text**` or `__text__`), italic (`*text*` or `_text_`), and strikethrough (`~~text~~`) text formatting.
-- **Code Blocks**: Converts inline code (`\`code\``) and fenced code blocks (``` `code` ```) into HTML code elements (`\<code>\`, `<pre>`).
-- **Paragraphs**: Automatically wraps standalone lines of text in paragraph tags (`<p>`).
+- **Simple frontmatter**: Extracts `key: value` pairs between opening and closing `---` lines.
+- **Headings**: Supports `#` through `######` and setext-style H1/H2 headings.
+- **Lists**: Supports flat unordered lists with `*`, `-`, or `+` and flat ordered lists like `1.`.
+- **Blockquotes**: Converts consecutive `>` lines into one `<blockquote>`.
+- **Images**: Converts `![alt text](url)` into safe `<img>` tags.
+- **Links**: Converts `[text](url)` and `[text](url "title")` into safe `<a>` tags.
+- **Text formatting**: Supports `**bold**`, `__bold__`, `*italic*`, `_italic_`, and `~~strikethrough~~`.
+- **Code**: Supports fenced code blocks and inline code.
+- **Escaping**: Escapes raw HTML by default and only allows relative URLs plus `http:`, `https:`, `mailto:`, and `tel:`
+  URLs.
 
 ## Installation
 
-You can include the `parseMd` function in your project by importing it directly from your JavaScript module:
+Import the function directly as an ES module:
 
 ```javascript
-import { parseMd } from './path-to-your-file/parseMd';
+import { parseMd } from "./parseMD.js";
 ```
 
-or use a cdn
+Or use it from a CDN:
 
 ```javascript
-import { parseMd } from 'https://cdn.jsdelivr.net/gh/Tehes/parseMD@main/parseMD.js';
+import { parseMd } from "https://cdn.jsdelivr.net/gh/Tehes/parseMD@main/parseMD.js";
 ```
 
 ## Usage
 
-### Example
-
 ```javascript
-import { parseMd } from './parseMd';
+import { parseMd } from "./parseMD.js";
 
-const markdown = `
-import { parseMd } from './parseMd';
-
-const markdown = `
----
+const markdown = `---
 title: "My Project"
 author: "John Doe"
 date: "2024-08-24"
@@ -49,12 +45,13 @@ date: "2024-08-24"
 
 # My Project
 
-This is an **example** of Markdown with Frontmatter.
+This is an **example** of Markdown with simple frontmatter.
 
 ## Features
+
 - Easy to use
 - Lightweight
-- Supports multiple Markdown features
+- No runtime dependencies
 
 \`\`\`javascript
 console.log("Hello, world!");
@@ -62,49 +59,54 @@ console.log("Hello, world!");
 
 ![Sample Image](https://example.com/image.jpg)
 
-Visit [our website](https://example.com) for more details.
+Visit [our website](https://example.com "Example") for more details.
 `;
 
 const { metadata, content } = parseMd(markdown);
-console.log(metadata); // Logs the extracted Frontmatter object
-console.log(content); // Logs the converted HTML
+
+console.log(metadata);
+console.log(content);
 ```
 
-### Output
+Output:
 
 ```javascript
 {
   metadata: {
     title: "My Project",
     author: "John Doe",
-    date: "2021-08-24"
+    date: "2024-08-24"
   },
-  content: `
-<h1>My Project</h1>
-<p>This is an <b>example</b> of Markdown with Frontmatter.</p>
+  content: `<h1>My Project</h1>
+<p>This is an <b>example</b> of Markdown with simple frontmatter.</p>
 <h2>Features</h2>
 <ul>
-  <li>Easy to use</li>
-  <li>Lightweight</li>
-  <li>Supports multiple Markdown features</li>
+<li>Easy to use</li>
+<li>Lightweight</li>
+<li>No runtime dependencies</li>
 </ul>
-<pre class="javascript"><code>console.log("Hello, world!");</code></pre>
+<pre class="javascript"><code>console.log(&quot;Hello, world!&quot;);</code></pre>
 <img src="https://example.com/image.jpg" alt="Sample Image" />
-<p>Visit <a href="https://example.com">our website</a> for more details.</p>
-`
+<p>Visit <a href="https://example.com" title="Example">our website</a> for more details.</p>`
 }
 ```
 
-## How It Works
+## Frontmatter Scope
 
-The parseMd function works by replacing Markdown syntax in a string with corresponding HTML tags. It processes the input string through a series of regular expression replacements, each handling a specific aspect of the Markdown syntax.
+Frontmatter is deliberately simple:
 
-### Steps
+```markdown
+---
+title: "Example"
+published: true
+description: Text with: colon
+---
+```
 
-1. Extract Frontmatter: Separates YAML Frontmatter at the beginning of the document and converts it into an object.
-2. Escape HTML: Safeguards against XSS attacks by escaping any HTML tags in the input.
-3. Transform Headers, Lists, Blockquotes, etc.: Identifies and converts headers, lists, and other Markdown syntax into their HTML equivalents.
-4. Parse Images and Links: Detects and transforms image and link notations into HTML tags.
-5. Apply Text Formatting: Processes bold, italic, and strikethrough text into HTML tags.
-6. Format Code Blocks: Handles both inline and block code formats.
-7. Wrap Paragraphs: Ensures any remaining text is neatly wrapped in paragraph tags.
+Values are returned as strings. Matching single or double quotes around a value are removed. Nested YAML objects,
+arrays, dates, booleans, and numbers are not parsed into typed values.
+
+## Security Notes
+
+Raw HTML in Markdown input is escaped. For links and images, unsafe URL schemes such as `javascript:` and `data:` are
+ignored, so the generated HTML does not include unsafe `href` or `src` attributes.
